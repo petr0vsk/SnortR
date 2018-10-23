@@ -24,13 +24,8 @@ get_proto <- function(x){
   #print(str_c("--1-x = ", x))
   for (i in 2:length(x[[1]]) )
   { # ищем самую длинную цепочку со списком протоколов
-    #print(str_c("--2 i = ",i ))
-    #if( nchar(x) > nchar(temp)) temp <-  (x)
-    if( nchar(x[[1]][i]) > nchar(temp)) temp <-  (x[[1]][i])
-    #print(str_c("--2 nchar(x) = ", nchar(x) ))
-    #print(str_c("--2 nchar(temp) = ", nchar(temp) ))
-    #print(str_c("--2 new temp = ", temp ))
-  }
+       if( nchar(x[[1]][i]) > nchar(temp)) temp <-  (x[[1]][i])
+    }
   # возвращаем откусив все протоколы. которые ниже tcp-udp
   return(str_sub(temp,19, nchar(temp)))
 }
