@@ -30,3 +30,25 @@ sec_interval <- zoo(, seq(start(irreg.times), end(irreg.times), "sec"))
 # заполняем нулями
 reg.times.agg <- merge(irreg.times.agg, sec_interval, fill = 0)
 autoplot.zoo(reg.times.agg) + ggtitle("Распределение по времени длины фреймов канального уровня") + geom_area(alpha = 0.15) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(x = "Время", y = "Суммарна длина пакетов/секунду")
+#########################################################################
+# суммируем длину пакетов протокола TCP внутри окна в одну секунду
+#############################################################################
+time <- as.character.Date(dataset$frame.time)
+# преобразуем timestamp к виду пригодному для обработки
+time.t <- strptime(time, '%b %d, %Y %H:%M:%S')
+# создадим временную серию класса zoo
+irreg.times <- zoo(dataset$tcp.len, order.by = time.t )
+# суммируем длину пакетов TCP внутри окна в одну секунду
+irreg.times.agg  <- aggregate(irreg.times, as.POSIXct(trunc(time(irreg.times), "sec")), sum)
+# теперь вычисляем шкалу секунд без пропусков от начальной до конечной секунды выборки 
+sec_interval <- zoo(, seq(start(irreg.times), end(irreg.times), "sec"))
+# и наконец объеденим две шкалы, приводя выборку к регулярной. пропуски по времени выборки
+# заполняем нулями
+reg.times.agg <- merge(irreg.times.agg, sec_interval, fill = 0)
+autoplot.zoo(reg.times.agg) + ggtitle("Распределение по времени длины пакета TCP IP") + geom_area(alpha = 0.15) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(x = "Время", y = "Суммарна длина пакетов/секунду")
+
+
+
+
+
+
