@@ -8,6 +8,7 @@ library(jsonlite)
 library(tidyr)
 library(dplyr)
 library(stringr)
+library(cowplot)
 ######################################### function make_timeseries ##############################################################
 # функция make_timeseries получает в качестве аргументов имя набора данных и поля этого набора
 # данных, значение которого будет суммироваться на интервале в одну секунду
@@ -57,7 +58,8 @@ make_timeseries <- function(dataset_name, col_name, plt=FALSE) {
 ####################################################################################################################
 plot_timeseries <- function(timeseries) {
   
-  autoplot.zoo(timeseries$timeseries_zoo) + ggtitle(  str_c("Распределение по времени длины пакетов ", timeseries$col_name) ) + geom_line(alpha = 0.15) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(x = "Время", y = "Суммарна длина пакетов/секунду") 
+  autoplot.zoo(timeseries$timeseries_zoo) + ggtitle(  str_c("Распределение по времени длины пакетов ", 
+      timeseries$col_name) ) + geom_line(alpha = 0.15) + geom_point() + geom_smooth(method = "loess", se = FALSE) + labs(x = "Время", y = "len packet/sec") 
 
 }
 ##############################################################################
@@ -70,25 +72,31 @@ dataset <- read.table("CTF_1.txt", quote="\"", header = T, sep=",") %>%
 na.omit(dataset)
 #-------------------------------------------
 timeseries.zoo.farme.len <- make_timeseries(dataset, frame.len)
-plot_timeseries(timeseries.zoo.farme.len)
+plot.frame.len <- plot_timeseries(timeseries.zoo.farme.len)
 #
 timeseries.zoo.tcp.len <- make_timeseries(dataset, tcp.len)
-plot_timeseries(timeseries.zoo.tcp.len)
+plot.tcp.len <- plot_timeseries(timeseries.zoo.tcp.len)
 #
 timeseries.zoo.hdr.len <- make_timeseries(dataset, tcp.hdr_len)
-plot_timeseries(timeseries.zoo.hdr.len)
+plot.tcp.hdr.len <- plot_timeseries(timeseries.zoo.hdr.len)
 #
 timeseries.zoo.flags.reset <- make_timeseries(dataset, tcp.flags.reset)
-plot_timeseries(timeseries.zoo.flags.reset)
+plot.tcp.flags.reset <-  plot_timeseries(timeseries.zoo.flags.reset)
 #
 timeseries.zoo.flags.ack <- make_timeseries(dataset, tcp.flags.ack)
-plot_timeseries(timeseries.zoo.flags.ack)
+plot.tcp.flags.ack <- plot_timeseries(timeseries.zoo.flags.ack)
 #
 timeseries.zoo.flags.syn <- make_timeseries(dataset, tcp.flags.syn)
-plot_timeseries(timeseries.zoo.flags.syn)
+plot.tcp.flags.syn <- plot_timeseries(timeseries.zoo.flags.syn)
 #
+#plot_grid(plot.frame.len , plot.frame.len, plot.tcp.hdr.len , plot.tcp.flags.reset,
+#          timeseries.zoo.flags.ack, timeseries.zoo.flags.syn, nrow = 6, align = "v")
 
-
+plot_grid(plot.frame.len,       plot.tcp.flags.syn,
+          plot.tcp.len,         plot.tcp.flags.ack,
+          plot.tcp.hdr.len,     plot.tcp.flags.reset, 
+          ncol = 2)
+#https://habr.com/post/339090/
 
 
 
