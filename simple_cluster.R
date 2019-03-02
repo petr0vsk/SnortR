@@ -116,3 +116,4 @@ fviz_dend(res.hc, k = 2, # Cut in four groups
           k_colors = "jco",
           type = "phylogenic", repel = TRUE,
           phylo_layout = "layout.gem")
+#####
