@@ -4,9 +4,25 @@
 # кластерный анализ для анализа потоков
 # 
 ############################################################################################################
-
-
 rm(list=ls())
+######################################### function plot_timeseries #################################################
+#
+# функция fn.return.cluster.flow получает в качестве аргументов имя дата-фрейма 
+# с колонками: [номер потока <--> номер кластера], иходный дата-фрейм с полным трафиком по потокам
+# и номер кластера траффик которого необходимо выделить.
+# возвращает дата-фрейм с трафиком (tcp-потоками), входящим в конкретный кластер (по умолчанию кластер № 1)
+####################################################################################################################
+fn.return.cluster.flow <- function(data.fr, data.set, nm.clust=1){
+  dataset_iptcp.clust.traffic <- data.frame()
+  # получим индексы с потоками заданного кластера
+  data.fr %>%
+    filter(num.clust==nm.clust) -> cl.index  
+  # вытащим из общего трафика - трафик заданного кластера
+  data.set %>%
+    filter(tcp.stream %in% cl.index$num.tcp.stream) -> iptcp.clust.traffic  
+  return (iptcp.clust.traffic)
+}
+#######################################################################################################################
 library(jsonlite)
 library(tidyr)
 library(dplyr)
@@ -19,15 +35,19 @@ library(VIM)
 # read pcap
 setwd('/home/petr0vsk/WorkR/SnortR/TrafficExamples')
 #read dataset
-dataset <- read.table("HackChallenge_Cmas2011.txt", quote="\"", header = T, sep=",") %>%
+#dataset <- read.table("HackChallenge_Cmas2011.txt", quote="\"", header = T, sep=",") %>%
+#  na.omit()
+dataset <- read.table("scan_traffic.txt", quote="\"", header = T, sep=",") %>%
   na.omit()
 
-# удалим лишнее - канальный уровень
+
+
+# удалим лишнее - канальный уровень ------------------------------------------------------------
 dataset_iptcp <- select(dataset, frame.number, frame.time, frame.protocols, ip.id, ip.flags, ip.src, ip.dst, contains("tcp."),-tcp.flags.ns, -tcp.flags.cwr, -tcp.flags.ecn ,X_ws.expert.message) 
 # # гистограмма распределения длины пакетов tcp
 ggplot(dataset_iptcp, aes(x=tcp.len)) +
   geom_histogram(binwidth=60, alpha=0.5, fill="red")
-#---------- проведем анализ по общей длине пакета tcp для каждого tcp-потока--------------------------
+#---------- проведем анализ по общей длине пакетов tcp для каждого tcp-потока--------------------------
 ## проссумируем общую длину поля данных пакета tcp
 # для каждого tcp_streams
 sum_tcp_len <- dataset_iptcp %>%
@@ -42,43 +62,49 @@ sum_tcp_len_norm <- scale(sum_tcp_len)
 # определим оптимальное число кластеров для tcp_streams
 fviz_nbclust(sum_tcp_len_norm, kmeans, method = "wss") +
   labs(subtitle = "Elbow method")
-df.sum.tcp.len <- kmeans(sum_tcp_len_norm, 3, nstart = 25)
+df.sum.tcp.len <- kmeans(sum_tcp_len_norm, 4, nstart = 25)
 # визуализируем картинку и видим четкое разделение 
-fviz_cluster(df.res2, data = sum_tcp_len_norm,  geom = "point", 
+fviz_cluster(df.sum.tcp.len, data = sum_tcp_len_norm,  geom = "point", 
              ellipse= FALSE, show.clust.cent = FALSE,
              palette = "jco", ggtheme = theme_linedraw())
 # выделим из трафика потоки, принадлежащие  разным кластерам
 sum_tcp_len.clust <- data.frame(sum_tcp_len$tcp.stream, df.sum.tcp.len$cluster) %>%
   rename(num.tcp.stream = sum_tcp_len.tcp.stream , num.clust = df.sum.tcp.len.cluster )
-######################################### function plot_timeseries ##############################################################
-#
-# функция un.return.cluster.flow получает в качестве аргументов имя дата-фрейма 
-# с колонками: [номер потока <--> номер кластера] и номер кластера траффик которого
-# необходимо выделить.
-# возвращает дата-фрейм с трафиком (tcp-потоками), входящим в конкретный кластер
-####################################################################################################################
-fun.return.cluster.flow <- function(data.fr, num.clust){
-  
-  
-  
-  
-}
 
-
-sum_tcp_len.clust %>%
-  filter(num.clust==1) -> clust.index 
-
-dataset_iptcp %>%
-  filter(tcp.stream %in% clust.index$num.tcp.stream) -> dataset_iptcp.clust.traffic
-
-
-
+traff.cluster.1  <- fn.return.cluster.flow(sum_tcp_len.clust, dataset_iptcp, 1)
+traff.cluster.2  <- fn.return.cluster.flow(sum_tcp_len.clust, dataset_iptcp, 2)
+traff.cluster.3  <- fn.return.cluster.flow(sum_tcp_len.clust, dataset_iptcp, 3)
+traff.cluster.4  <- fn.return.cluster.flow(sum_tcp_len.clust, dataset_iptcp, 4)
 
 ##----------------------------------------------------------------------------------------
 ## проссумируем количетсво пакетов в каждом tcp_stream
 count_tcp_stream <- dataset_iptcp %>% 
   group_by(tcp.stream) %>%
   count()
+# посмотрим что получилось
+#aggr(sum_tcp_len)
+summary(count_tcp_stream)
+# нормализуем параметры
+count_tcp_stream_norm <- scale(count_tcp_stream)
+# K-MEANS -----
+# определим оптимальное число кластеров для tcp_streams
+fviz_nbclust(count_tcp_stream_norm, kmeans, method = "wss") +
+  labs(subtitle = "Elbow method")
+df.count.tcp.stream <- kmeans(count_tcp_stream_norm, 4, nstart = 25)
+# визуализируем картинку и видим четкое разделение 
+fviz_cluster(df.count.tcp.stream, data = sum_count_tcp_stream,  geom = "point", 
+             ellipse= FALSE, show.clust.cent = FALSE,
+             palette = "jco", ggtheme = theme_linedraw())
+# выделим из трафика потоки, принадлежащие  разным кластерам
+count_tcp_stream.clust <- data.frame(count_tcp_stream$tcp.stream, df.count.tcp.stream$cluster) %>%
+  rename(num.tcp.stream = count_tcp_stream.tcp.stream , num.clust = df.count.tcp.stream.cluster )
+
+traff.cluster.11  <- fn.return.cluster.flow(count_tcp_stream.clust, dataset_iptcp, 1)
+traff.cluster.22  <- fn.return.cluster.flow(count_tcp_stream.clust, dataset_iptcp, 2)
+traff.cluster.33  <- fn.return.cluster.flow(count_tcp_stream.clust, dataset_iptcp, 3)
+traff.cluster.44  <- fn.return.cluster.flow(count_tcp_stream.clust, dataset_iptcp, 4)
+
+
 
 ############################################################################################
 ## попробуем обработать набор, где содержатся и суммарная длина поля пакета tcp 
@@ -87,6 +113,7 @@ count_tcp_stream <- dataset_iptcp %>%
 #############################################################################################
 df_count.and.len.tcp <- full_join(count_tcp_stream, sum_tcp_len, by="tcp.stream") 
 df_count.and.len.tcp <- df_count.and.len.tcp[,2:3]
+summary(df_count.and.len.tcp)
 # нормализуем параметры
 df_count.and.len.tcp_norm <- scale(df_count.and.len.tcp)
 
@@ -115,15 +142,15 @@ fviz_dend(res.hc, cex = 0.5, k = 4, palette = "jco")
 fviz_nbclust(df_count.and.len.tcp_norm, pam, method = "silhouette")+
   theme_classic()
 # 3 -clusters
-pam.res2 <-pam(df_count.and.len.tcp_norm, 4)
+pam.res2 <-pam(df_count.and.len.tcp_norm, 2)
 fviz_cluster(pam.res2, geom = "point", 
              ellipse= FALSE, show.clust.cent = FALSE,
              palette = "jco", ggtheme = theme_linedraw())
 
- # CLARA method ---
+# CLARA method ---
 fviz_nbclust(df_count.and.len.tcp_norm, clara, method = "silhouette")+
   theme_classic()
-clara.res <- clara(df_count.and.len.tcp_norm, 4, samples = 50, pamLike = TRUE)
+clara.res <- clara(df_count.and.len.tcp_norm, 2, samples = 50, pamLike = TRUE)
 
 fviz_cluster(clara.res,
              geom = "point", 
@@ -168,7 +195,7 @@ meanError(gng)
 
 # Plot with first 2 coordinates as position
 plot(gng, vertex.color="cluster")
- 
+
 
 
 
